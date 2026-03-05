@@ -1,6 +1,5 @@
 """
-single_eval.py
-- Evaluate ONE model file at ONE imgsz
+- Evaluate ONE model file at ONE imgsz (test dataset)
 - Metrics: mAP50-95, AP_small, recall, precision
 - Latency:
   - core_latency (pure inference): predictor.inference() for ALL formats
@@ -30,7 +29,7 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
 # =============================
-# CONFIG (keep same as your script)
+# CONFIG
 # =============================
 DEVICE = 0
 DATA_YAML = "cfg/cessna_fhd.yaml"
@@ -225,7 +224,7 @@ def measure_core_latency_universal(model: YOLO, imgsz: int, predictor):
     - 모든 포맷에서 동작하는 공정 측정
     """
     # predictor.preprocess는 list[np.ndarray]를 받아서 torch tensor를 만들지만,
-    # core는 '순수 inference'만 보려는 목적이라 torch tensor를 직접 만듭니다.
+    # core는 '순수 inference'만 보려는 목적이라 torch tensor를 직접 만듦.
     im = torch.randn(1, 3, imgsz, imgsz, device=f"cuda:{DEVICE}", dtype=torch.float32)
 
     # 엔진이 FP16일 수도 있으니 "실제 predictor가 기대하는 dtype"에 맞추기

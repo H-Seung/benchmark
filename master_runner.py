@@ -14,7 +14,7 @@ from pathlib import Path
 import sys
 
 # =============================
-# CONFIG (copied from your script)
+# CONFIG
 # =============================
 IMG_SIZES = [640, 960, 1088]
 MODELS_ROOT = Path("models")

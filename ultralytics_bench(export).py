@@ -1,15 +1,9 @@
-# ultralytics 공식 벤치마크(커스텀) 실행 / 모델 export 및 성능 경향성 확인
+# ultralytics 공식 벤치마크(커스텀: 4개 확장자만 실행되도록 변형) 실행 & 모델 export 및 성능 경향성 확인
+
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 # pip install ultralytics
 
 from ultralytics.utils.benchmarks_custom import benchmark
-from ultralytics import YOLO
-
-# # Load the YOLO26 model
-# model = YOLO("yolo26n.pt")
-
-# # Export the model to TensorRT format
-# model.export(format="engine")  # creates 'yolo26n.engine'
 
 if __name__ == "__main__":
     # 테스트할 모델 리스트 정의
