@@ -3,7 +3,13 @@
 **/wandb
 /models/original/
 *.pt
+*.engine
+*.onnx
+*.torchscript
+*.csv
 runs/
 *__pycache__/
 *.npy
 *.log
+test.py
+/benchmark_results

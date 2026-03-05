@@ -1,10 +1,12 @@
 path: D:/SW-test/benchmark/data/cessna_fhd
 train: train.txt # train images (relative to 'path') 4 images
 val: val.txt # val images (relative to 'path') 4 images
+test: test.txt
 
 annotations:
   train: d:/SW-test/model-poc-cessna/data/coco/raw_fhd/annotations/instances_train.json
   val: d:/SW-test/model-poc-cessna/data/coco/raw_fhd/annotations/instances_val.json
+  test: d:/SW-test/model-poc-cessna/data/coco/raw_fhd/annotations/instances_test.json
 
 # Classes
 names:
