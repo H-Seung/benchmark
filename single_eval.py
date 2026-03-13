@@ -27,6 +27,7 @@ import torch
 from ultralytics import YOLO
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
+import psutil
 
 # =============================
 # CONFIG
@@ -48,6 +49,13 @@ CSV_PATH = "evaluation_results.csv"
 ASSET_DUMMY_IMAGE = str(Path("ultralytics") / "assets" / "bus.jpg")
 if not Path(ASSET_DUMMY_IMAGE).exists():
     ASSET_DUMMY_IMAGE = None
+
+# =============================
+# Set single-thread for CPU operations to reduce variability
+# (안하면 opencv, torch가 cpu thread 많이 사용해서 thread 스케줄링에 따른 latency 변동 심해짐)
+# =============================
+cv2.setNumThreads(1)
+torch.set_num_threads(1)
 
 # =============================
 # NVML
@@ -101,6 +109,18 @@ def get_gpu_process_mem_mb(device_index: int = 0) -> float:
 
         # WDDM에서 compute list에 안 뜨는 경우가 있어 NaN 반환
         return float("nan")
+    except Exception:
+        return float("nan")
+
+
+def get_gpu_utilization(device_index: int = 0) -> float:
+    """GPU compute utilization (%)"""
+    if not _NVML_AVAILABLE:
+        return float("nan")
+    try:
+        handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
+        util = pynvml.nvmlDeviceGetUtilizationRates(handle)
+        return float(util.gpu)
     except Exception:
         return float("nan")
 
@@ -271,6 +291,10 @@ def measure_pipeline_latency_split(model: YOLO, predictor, images, imgsz: int):
     torch.cuda.synchronize()
 
     t_io, t_pre, t_inf, t_post, t_total = [], [], [], [], []
+    cpu_samples = []
+    gpu_samples = []
+    process = psutil.Process(os.getpid())
+    process.cpu_percent(None)  # reset
 
     with torch.no_grad():
         for img_path in images[PIPE_WARMUP:]:
@@ -311,6 +335,9 @@ def measure_pipeline_latency_split(model: YOLO, predictor, images, imgsz: int):
             t_post.append(post_ms)
             t_total.append(total_ms)
 
+            cpu_samples.append(process.cpu_percent(None)) # cpu 샘플 리스트
+            gpu_samples.append(get_gpu_utilization(DEVICE)) # gpu 샘플 리스트
+
     def _mean(a):
         return float(np.mean(np.array(a, dtype=np.float64)))
 
@@ -321,6 +348,8 @@ def measure_pipeline_latency_split(model: YOLO, predictor, images, imgsz: int):
         "post_latency_ms": _mean(t_post),
         "pipeline_latency_ms": _mean(t_total),
         "fps_avg": 1000.0 / _mean(t_total),
+        "cpu_percent": _mean(cpu_samples),
+        "gpu_util_percent": _mean(gpu_samples),
     }
 
 
@@ -410,17 +439,24 @@ def main():
         "AP_small": round(acc["AP_small"], 4),
         "recall": round(acc["recall"], 4),
         "precision": round(acc["precision"], 4),
+
         "core_latency_avg_ms": round(core_avg, 3),
         "core_latency_std_ms": round(core_std, 3),
+
         "io_latency_ms": round(pipe["io_latency_ms"], 3),
         "pre_latency_ms": round(pipe["pre_latency_ms"], 3),
         "infer_latency_ms": round(pipe["infer_latency_ms"], 3),
         "post_latency_ms": round(pipe["post_latency_ms"], 3),
         "pipeline_latency_ms": round(pipe["pipeline_latency_ms"], 3),
         "fps_avg": round(pipe["fps_avg"], 2),
+
+        "cpu_%": round(pipe["cpu_percent"], 2), # 전체 cpu 중 이 프로세스가 사용한 평균 비율
+        "gpu_util_%": round(pipe["gpu_util_percent"], 2),
+
         "system_vram_before_mb": round(system_vram_before_mb, 1),
         "service_vram_mb": round(service_vram_mb, 1),
         "vram_delta_mb": round(vram_delta_mb, 1),
+
         "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "",
         "timestamp": datetime.datetime.now().isoformat(timespec="seconds"),
         "same_res": same_res,
